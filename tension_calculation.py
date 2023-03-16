@@ -371,7 +371,7 @@ def cal_tension(piano_roll,beat_time,beat_indices,down_beat_time,down_beat_indic
     try:
 
         # if long file, try to find key change
-        if len(down_beat_time) > 60:
+        if len(down_beat_time) > 9999999:
             key_name,key_pos, note_shift = cal_key(piano_roll,key_name,end_ratio=0.5)
             #use a bar window to detect key change
             centroids = cal_centroid(piano_roll, note_shift, -1, -1)
@@ -379,7 +379,6 @@ def cal_tension(piano_roll,beat_time,beat_indices,down_beat_time,down_beat_indic
 
             silent = np.where(np.linalg.norm(merged_centroids, axis=-1) == 0)
             merged_centroids = np.array(merged_centroids)
-
             key_diff = merged_centroids - key_pos
             key_diff = np.linalg.norm(key_diff, axis=-1)
 
@@ -470,33 +469,38 @@ def cal_tension(piano_roll,beat_time,beat_indices,down_beat_time,down_beat_indic
 
 
         centroids = cal_centroid(piano_roll, note_shift,key_change_beat,changed_note_shift)
-
-        merged_centroids = merge_tension(centroids,beat_indices, down_beat_indices, window_size=window_size)
+        merged_centroids = merge_tension(
+            centroids, beat_indices, down_beat_indices, window_size=window_size)
         merged_centroids = np.array(merged_centroids)
+
+        silent = np.where(np.linalg.norm(merged_centroids, axis=-1) < 0.1)
 
         if window_size == -1:
             window_time = down_beat_time
         else:
             window_time = beat_time[::window_size]
-        silent = np.where(np.linalg.norm(merged_centroids, axis=-1) == 0)
 
         if key_change_beat != -1:
             key_diff = np.zeros(merged_centroids.shape[0])
             changed_step = int(key_change_beat / abs(window_size))
             for step in range(merged_centroids.shape[0]):
                 if step < changed_step:
-                    key_diff[step] = np.linalg.norm(merged_centroids[step] - key_pos)
+                    key_diff[step] = np.linalg.norm(
+                        merged_centroids[step] - key_pos)
                 else:
-                    key_diff[step] = np.linalg.norm(merged_centroids[step] - changed_key_pos)
+                    key_diff[step] = np.linalg.norm(
+                        merged_centroids[step] - changed_key_pos)
         else:
-            key_diff = np.linalg.norm(merged_centroids - key_pos,axis=-1)
-
+            key_diff = np.linalg.norm(merged_centroids - key_pos, axis=-1)
 
         key_diff[silent] = 0
 
-        diameters = cal_diameter(piano_roll, note_shift,key_change_beat,changed_note_shift)
-        diameters = merge_tension(diameters, beat_indices, down_beat_indices, window_size)
+        diameters = cal_diameter(
+            piano_roll, note_shift, key_change_beat, changed_note_shift)
+        diameters = merge_tension(
+            diameters, beat_indices, down_beat_indices, window_size)
         #
+        diameters[silent] = 0
 
         centroid_diff = np.diff(merged_centroids, axis=0)
         #
